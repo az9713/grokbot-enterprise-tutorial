@@ -1,0 +1,48 @@
+<div id="support-path">
+<style>
+#support-path{color:var(--foreground);background:transparent;}
+#support-path .path{list-style:none;padding:0;margin:16px 0;display:grid;gap:8px}
+#support-path .path li{display:flex;align-items:center;gap:12px;padding:8px 0;opacity:.48;transition:opacity .2s,transform .2s}
+#support-path .path li[data-active="true"]{opacity:1;transform:translateX(4px)}
+#support-path .step-number{display:grid;place-items:center;min-width:32px;height:32px;background:var(--muted);color:var(--foreground);border-radius:50%}
+#support-path li[data-active="true"] .step-number{background:var(--primary);color:var(--primary-foreground)}
+#support-path .human{color:var(--foreground);font-weight:500}
+#support-path .status{min-height:24px}
+@media(prefers-reduced-motion:reduce){#support-path .path li{transition:none;transform:none}}
+</style>
+<div class="viz-controls">
+<label class="form-label">Issue type<select class="form-select" id="case-kind"><option value="policy">Policy question</option><option value="bug" selected>Checkout bug</option><option value="serious">Serious incident</option></select></label>
+<label class="form-check"><input class="form-check-input" id="returning" type="checkbox" checked><span class="form-check-label">Returning caller</span></label>
+</div>
+<ol class="path" aria-label="Support workflow path"></ol>
+<div class="viz-row"><button type="button" class="btn" id="restart">Restart</button><button type="button" class="btn btn-primary" id="advance">Next step</button></div>
+<p class="status" aria-live="polite"></p>
+</div>
+<script>
+(()=>{
+const root=document.getElementById('support-path'),kind=root.querySelector('#case-kind'),returning=root.querySelector('#returning'),list=root.querySelector('ol'),status=root.querySelector('.status'),next=root.querySelector('#advance');
+let step=0,path=[];
+function rebuild(){
+path=[{label:'Read the ticket and transcript',owner:'Concierge'}];
+if(returning.checked)path.push({label:'Retrieve prior cases and promises',owner:'Records'});
+path.push({label:'Write notes and check policy',owner:'Concierge'});
+if(kind.value==='serious')path.push({label:'Escalate with evidence',owner:'Human team',human:true});
+else{
+if(kind.value==='bug'){path.push({label:'Reproduce the reported defect',owner:'QA'});path.push({label:'Prepare fix, test, and pull request',owner:'Coding agent'});path.push({label:'Review the proposed code change',owner:'Engineer',human:true});}
+path.push({label:'Prepare the customer reply',owner:'Concierge'});
+path.push({label:'Review and send the reply',owner:'Human',human:true});
+path.push({label:'Close the case and update history',owner:'Concierge and Records'});
+}
+step=0;render();
+}
+function render(){
+list.replaceChildren(...path.map((s,i)=>{const li=document.createElement('li');li.dataset.active=String(i===step);if(i===step)li.setAttribute('aria-current','step');const n=document.createElement('span');n.className='step-number';n.textContent=String(i+1);const t=document.createElement('span');t.textContent=s.label;const o=document.createElement('span');o.className=s.human?'human':'text-small text-muted';o.textContent=' — '+s.owner+(s.human?' · Human checkpoint':'');t.append(o);li.append(n,t);return li;}));
+next.disabled=step===path.length-1;
+status.textContent=path[step].human?'Human checkpoint reached':'Current owner: '+path[step].owner;
+}
+kind.addEventListener('change',rebuild);returning.addEventListener('change',rebuild);
+root.querySelector('#restart').addEventListener('click',()=>{step=0;render()});
+next.addEventListener('click',()=>{step=Math.min(step+1,path.length-1);render()});
+rebuild();
+})();
+</script>
